@@ -12,29 +12,17 @@ int addition(char * donnees);
 int soustraction(char * donnees);
 int multiplication(char * donnees);
 int puissance(char * donnees);
+int distance(char * donnees);
 
-//Constantes
-const char * separators = ' ;';
+//Le séparateur des données reçues est ';'
+const char separators [1] = ";";
+const char separatorDistance[1] = ",";
 
 int main()
 {
-	//les ports des pipes utilisés pour l'addition
-	//p1[0] -> lecture du message du client par le serveur
-	//p1[1] -> ecriture du client vers le serveur
-
-	//p2[0] -> lecture du message du serveur par le client
-	//p2[1] -> ecriture du serveur vers le client
-
-	//Les ports des pipes pour la multiplication 
-	//p3[0] -> lecture du message du client par le serveur
-	//p3[1] -> ecriture du client vers le serveur
-
-	//p4[0] -> lecture du message du serveur par le client
-	//p4[1] -> ecriture du serveur vers le client
-
 	//creation des pipe
-	int p1[2];
-	int p2[2];
+	int p1[2];//Pipe client -> serveur
+	int p2[2];//Pipe client <- serveur
 	int p3[2];//Pipe qui envoie le choix de l'opération au serveur
 	int p4[4];//pipe pour envoyer la taille des donnees client(fils) au serveur(pere)	
 
@@ -43,34 +31,31 @@ int main()
 	pipe(p3); 
 	pipe(p4);
 
-	//variable identification processus
+	//variable d'identification processus
 	pid_t pcs;
 
 	//variables pour les fonctions de calculs
-	char donnees[100]; //Taille des données entrées par l'utilisateur // 1;23 donnees[0]=1;donnees[1]=;donnees[2]=2;donnees[3]=3
+	char donnees[100]; //Taille de la chaîne entrée par l'utilisateur (nombre de caractère total avec les ;)
 	int tailleDonnees; //strlen(donnees)
 	int tailleDonneesLuServer;
 	int resultat;
 	int produit;
 	int choixOpe;
-	char ope;
-	
-	//le nombre de caractères dans le mot
-	char mot[30];
 
 	//creation du processus client
 	pcs = fork();
 
-	if (pcs == 0){
-			//demande les chiffres à additionner
+	if (pcs == 0){ //client
 			do{
-				printf("Veuillez choisir votre opération; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 \n");
+				printf("Veuillez choisir votre opération; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5\n");
 				scanf("%d",&choixOpe);
-			}while(choixOpe > 4 || choixOpe < 1);
-
+			}while(choixOpe > 5 || choixOpe < 1);
 			
 			printf("Veuillez les valeurs à calculer separees de ;\n");
+			if(choixOpe = 5)
+				printf("l'ordre des valeurs : xA;yA;xB;yB (les valeurs en plus seront ignorées)\n");
 			scanf("%s",donnees); //5;4;4;6;9
+			
 			printf("Les données entrées: %s\n",donnees);
 			tailleDonnees = strlen(donnees);
 			printf("La taille des données entrées: %d\n",tailleDonnees);
@@ -81,7 +66,6 @@ int main()
 			close(p2[1]); //fermer l'ecriture sur le pipe du père
 			close(p3[0]);//fermer la lecture du pipe sur le choix de l'operation 
 			
-
 			printf("envoie le choix de l'operation au serveur");
 			write(p3[1],&choixOpe,sizeof(int));
 			printf("envoyer la taille des donnees au serveur");
@@ -107,25 +91,26 @@ int main()
 
 		switch(choixOpe){
 			case 1 : 
+				printf("partie addition");
 				resultat = addition(donnees);
 				printf("Le resultat: %d\n",resultat );
-				ope = '+';
 			break;
 			case 2 : 
 				resultat = soustraction(donnees);
 				printf("Le resultat: %d\n",resultat );
-				ope = '-';
 			break;
 			case 3 : 
 				resultat = multiplication(donnees);
 				printf("Le resultat: %d\n",resultat );
-				ope = '*';
 			break;
 			case 4 : 
 				resultat = puissance(donnees);
 				printf("Le resultat: %d\n",resultat );
-				ope = '^';
 			break; 
+			case 5 :
+				resultat = distance(donnees);
+				printf("Le resultat : %d\n", resultat);
+			break;
 
 		}
 
@@ -140,11 +125,10 @@ int main()
 
 int addition(char * donnees){
 	int res = 0;
-	printf("Les donnees envoyees par le client: %s\n",donnees );
-	//split
+	//initialisation du parser
 	char * strToken = strtok (donnees,separators);
 	while ( strToken != NULL ) {
-        res += atoi(strToken);
+        res += atoi(strToken); //conversion en int
         // On demande le token suivant.
         strToken = strtok ( NULL, separators );
     }
@@ -153,16 +137,63 @@ int addition(char * donnees){
 }
 
 int soustraction(char * donnees){
-	printf("Les donnees envoyees par le client: %s\n",donnees );
-	return 1;
+	int res;
+	//initialisation du parser
+	char * strToken = strtok (donnees,separators);
+	//Initialisation de res avec la première valeur
+	res = atoi(strToken);
+    // On demande le token suivant.
+    strToken = strtok ( NULL, separators );
+	//Réalisation de l'opération
+	while ( strToken != NULL ) {
+        res -= atoi(strToken);
+        strToken = strtok ( NULL, separators );
+    }
+    printf("SOUSTRACTION: %d\n", res );
+	return res;
 }
 
 int multiplication(char * donnees){
-	printf("Les donnees envoyees par le client: %s\n",donnees );
-	return 1;
+	int res = 1;
+	char * strToken = strtok (donnees,separators);
+	while ( strToken != NULL ) {
+        res *= atoi(strToken);
+        // On demande le token suivant.
+        strToken = strtok ( NULL, separators );
+    }
+    printf("MULTIPLICATION: %d\n", res );
+	return res;
 }
 
 int puissance(char * donnees){
-	printf("Les donnees envoyees par le client: %s\n",donnees );
-	return 1;
+	int res;	
+	char * strToken = strtok (donnees,separators);
+	res = atoi(strToken);
+	// On demande le token suivant.
+	strToken = strtok ( NULL, separators );
+	while ( strToken != NULL ) {
+        res = pow(res,atoi(strToken));
+        // On demande le token suivant.
+        strToken = strtok ( NULL, separators );
+    }
+    printf("PUISSANCE: %d\n", res );
+	return res;
+}
+
+int distance(char * donnees){
+	int res;
+	int xA, yA, xB, yB;	
+	char * strToken = strtok (donnees,separators);
+	xA = atoi(strToken);
+	strToken = strtok ( NULL, separators );
+	yA = atoi(strToken);
+	strToken = strtok ( NULL, separators );
+	xB = atoi(strToken);
+	strToken = strtok ( NULL, separators );
+	yB = atoi(strToken);
+	
+	res = sqrt(pow((xA-xB),2)+pow((yA-yB),2));
+	
+    printf("DISTANCE: %d\n", res );
+	return res;
 }
