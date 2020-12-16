@@ -13,6 +13,9 @@ int soustraction(char * donnees);
 int multiplication(char * donnees);
 int puissance(char * donnees);
 
+//Constantes
+const char * separators = ' ;';
+
 int main()
 {
 	//les ports des pipes utilisés pour l'addition
@@ -44,14 +47,14 @@ int main()
 	pid_t pcs;
 
 	//variables pour les fonctions de calculs
-	char * donnees; //Taille des données entrées par l'utilisateur
+	char donnees[100]; //Taille des données entrées par l'utilisateur // 1;23 donnees[0]=1;donnees[1]=;donnees[2]=2;donnees[3]=3
 	int tailleDonnees; //strlen(donnees)
 	int tailleDonneesLuServer;
 	int resultat;
 	int produit;
 	int choixOpe;
 	char ope;
-
+	
 	//le nombre de caractères dans le mot
 	char mot[30];
 
@@ -61,26 +64,29 @@ int main()
 	if (pcs == 0){
 			//demande les chiffres à additionner
 			do{
-				printf("Veuillez choisir votre opération; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5\n");
+				printf("Veuillez choisir votre opération; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 \n");
 				scanf("%d",&choixOpe);
-			}while(choixOpe > 5 || choixOpe < 1);
+			}while(choixOpe > 4 || choixOpe < 1);
 
 			
 			printf("Veuillez les valeurs à calculer separees de ;\n");
 			scanf("%s",donnees); //5;4;4;6;9
+			printf("Les données entrées: %s\n",donnees);
 			tailleDonnees = strlen(donnees);
-				
-			//taille des données: sizeof(char)
-
+			printf("La taille des données entrées: %d\n",tailleDonnees);
+			
 			//le client est le pcs qui écrit dans le tube
+			close(p4[0]);//fermer la lecture du pipe sur la taille des données
 			close(p1[0]); // vérouille la lecture du père 
 			close(p2[1]); //fermer l'ecriture sur le pipe du père
 			close(p3[0]);//fermer la lecture du pipe sur le choix de l'operation 
-			close(p4[0]);//fermer la lecture du pipe sur la taille des données
+			
 
+			printf("envoie le choix de l'operation au serveur");
 			write(p3[1],&choixOpe,sizeof(int));
+			printf("envoyer la taille des donnees au serveur");
 			write(p4[1],&tailleDonnees,sizeof(int));//envoyer la taille des donnees au serveur
-			write(p1[1],&donnees,tailleDonnees);//envoyer les donnees brutes au serveur
+			write(p1[1],donnees,tailleDonnees);//envoyer les donnees brutes au serveur
 			
 			read(p2[0],&resultat,sizeof(int));
 			printf(" le resultat renvoyé par le serveur: %d\n",resultat);
@@ -90,13 +96,11 @@ int main()
 
 	else{
 		//le serveur lit le tube et répond 
-		printf("Vous êtes maintenant dans le serveur" );
-
+		close(p4[1]);//fermer l'ecriture dans le pipe de la taille des donnees
 		close(p1[1]);//femer l'écriture du client
 		close(p2[0]);//fermer la lecture du client
 		close(p3[1]);//fermer l'ecriture dans le pipe du choix de l'operation 
-		close(p4[1]);//fermer l'ecriture dans le pipe de la taille des donnees
-
+		
 		read(p3[0],&choixOpe,sizeof(int));
 		read(p4[0],&tailleDonneesLuServer,sizeof(int));// on lit la taille des données
 		read(p1[0],&donnees,tailleDonneesLuServer);//on lit ce qui se trouve dans le tube p1 et on le met dans donnees avec une taille de tailleDonneesLuServer
@@ -125,7 +129,7 @@ int main()
 
 		}
 
-		printf(" le client a dit: %s",donnees);
+		printf(" le server confirme que le client a dit: %s",donnees);
 		write(p2[1],&resultat,sizeof(int));
 		close(p2[1]);//fermer l'écriture
 		wait(0);
@@ -135,8 +139,17 @@ int main()
 }
 
 int addition(char * donnees){
+	int res = 0;
 	printf("Les donnees envoyees par le client: %s\n",donnees );
-	return 1;
+	//split
+	char * strToken = strtok (donnees,separators);
+	while ( strToken != NULL ) {
+        res += atoi(strToken);
+        // On demande le token suivant.
+        strToken = strtok ( NULL, separators );
+    }
+    printf("ADDITION: %d\n", res );
+	return res;
 }
 
 int soustraction(char * donnees){
