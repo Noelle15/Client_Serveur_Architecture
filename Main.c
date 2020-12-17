@@ -52,16 +52,11 @@ int main()
 		if (pcs == 0){ //client
 				do{
 					//GERER LE CAS oU oN TAPE UN MAUVAIS CHOIX COMME 1;
-					printf("Veuillez choisir votre opération; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5\n");
-					scanf(" %d",&choixOpe);
+					printf("Veuillez choisir votre opération suivi des donnees; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5\n");
+					scanf("%d",&choixOpe); //5;4;4;6;9
 				}while(choixOpe > 5 || choixOpe < 1);
 				
-				printf("Veuillez les valeurs à calculer separees de ;\n");
-				//GERER ERREUR POUR DISTANCE ET REGARdER RETOUR DONNEES
-				if(choixOpe == 5){
-					printf("l'ordre des valeurs : xA;yA;xB;yB (les valeurs en plus seront ignorées)\n");
-				}
-				scanf(" %s",donnees); //5;4;4;6;9
+				scanf(" %s",donnees); 
 				
 				printf("Les données entrées: %s\n",donnees);
 				tailleDonnees = strlen(donnees);
@@ -110,11 +105,14 @@ int main()
 					resultat = puissance(donnees);
 					printf("Le resultat: %d\n",resultat );
 				break; 
-				case 5 :
+				case 5 :				
 					resultat = distance(donnees);
-					printf("Le resultat : %d\n", resultat);
+					printf("Le resultat: %d\n",resultat );	
 				break;
-
+				default:
+					resultat = 0;
+					printf("Opération non reconnue. Resultat: %d\n",resultat);
+				break;
 			}
 
 			write(p2[1],&resultat,sizeof(int));
@@ -184,20 +182,33 @@ int puissance(char * donnees){
 }
 
 int distance(char * donnees){
-	int res;
+	int res = 0;
+	int cpt = 0;
 	int xA, yA, xB, yB;	
+	int tab[4];
 	char * strToken = strtok (donnees,separators);
-	xA = atoi(strToken);
-	strToken = strtok ( NULL, separators );
-	yA = atoi(strToken);
-	strToken = strtok ( NULL, separators );
-	xB = atoi(strToken);
-	strToken = strtok ( NULL, separators );
-	yB = atoi(strToken);
-	
-	res = sqrt(pow((xA-xB),2)+pow((yA-yB),2));
-	
-    printf("DISTANCE: %d\n", res );
+	for(int c = 0; c<4; c++){
+		printf(" Le tableau avant la boucle: %d\n", tab[c]);
+	}
+	while(cpt<4 && strToken!=NULL){
+		cpt++;
+		tab[cpt] = atoi(strToken);
+		printf("Le contenu de tab: ----> %d\n",tab[cpt] );
+		strToken = strtok ( NULL, separators );
+	}
+	if(cpt==4){
+		xA = tab[0];
+		yA = tab[1];
+		xB = tab[2];
+		yB = tab[3];
+
+		res = sqrt(pow((xA-xB),2)+pow((yA-yB),2));
+		printf("DISTANCE: %d\n", res);
+	}
+	else{
+		printf("Le nombre de points fourni est inferieur à 4: Resultat:  %d\n", res);
+	}
+
 	return res;
 }
 
