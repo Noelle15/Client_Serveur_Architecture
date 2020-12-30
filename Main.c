@@ -13,16 +13,20 @@ int soustraction(char * donnees);
 int multiplication(char * donnees);
 int puissance(char * donnees);
 int distance(char * donnees);
+int dist(int x1, int y1, int x2, int y2);
+int matriceDistance(char * donnees);
 int continuer();
 
 //Le séparateur des données reçues est ';'
 const char separators [1] = ";";
+//représente le nombre de coordonnées pour un point
+const int coord = 2;
 
 int main()
 {
 	
 	printf("another loop");
-	//creation des pipe
+	//creation des pipes
 	int p1[2];//Pipe client -> serveur
 	int p2[2];//Pipe client <- serveur
 	int p3[2];//Pipe qui envoie le choix de l'opération au serveur
@@ -52,11 +56,12 @@ int main()
 		if (pcs == 0){ //client
 				do{
 					//GERER LE CAS oU oN TAPE UN MAUVAIS CHOIX COMME 1;
-					printf("Veuillez choisir votre opération suivi des donnees; [addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5\n");
+					printf("Veuillez choisir votre opération suivi des donnees;\n");
+					printf("[addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5 : matriceDistance -> 6]\n");
 					scanf("%d",&choixOpe); //5;4;4;6;9
-				}while(choixOpe > 5 || choixOpe < 1);
+				}while(choixOpe > 6 || choixOpe < 1);
 				
-				scanf(" %s",donnees); //5;4;4;6;9
+				scanf(" %s",donnees); 
 				
 				printf("Les données entrées: %s\n",donnees);
 				tailleDonnees = strlen(donnees);
@@ -109,6 +114,11 @@ int main()
 					resultat = distance(donnees);
 					printf("Le resultat: %d\n",resultat );	
 				break;
+				case 6: 
+					resultat = matriceDistance(donnees);
+					printf("La matrice de distance euclidienne est:  %d\n", resultat);
+					//pour le resultat à envoyer au client, un pipe qui contiendra un tableau et la boucle d'affichage se fera dans le serveur
+					//ou on on dit, resultat = adresse du tableau sinon -1 si echec
 				default:
 					resultat = 0;
 					printf("Opération non reconnue. Resultat: %d\n",resultat);
@@ -210,6 +220,60 @@ int distance(char * donnees){
 	}
 
 	return res;
+}
+
+//utilisé pour clalculer la matrice de distance euclidienne
+int dist(int x1, int y1, int x2, int y2){
+	double distance = pow(x2 - x1, 2) + pow(y2 - y1, 2);
+    distance = sqrt(distance);
+
+    return (int)distance;
+}
+
+//calul de la matrice de distance euclidienne -> retourne l'adresse du tableau (de la matrice)
+int matriceDistance(char * donnees){
+	int res = 0;
+
+	int i=0,j=0,cptPoints=0,x1,x2,y1,y2,nbPoint;
+	//parsage des données 
+	char *strToken = strtok(donnees,separators);
+	while(strToken!= NULL){
+		cptPoints++;
+	}
+	//déterlination du nb de points donné
+	nbPoint = cptPoints/2;
+	int tabCoord[nbPoint][coord];
+	int distances[nbPoint][nbPoint];
+
+	//remplissage du tableau de coordonnées
+	//si jamais ça ne marche pas on peut créer un autre pointeur strtok
+	while(strToken!=NULL){
+		for(i=0;i<nbPoint;i++){//ligne
+			for(j=0;j<coord;j++){
+				tabCoord[i][j] = atoi(strToken);
+			}
+		}
+	}
+
+	//calcul des distances
+	for(i=0;i<nbPoint;i++){
+		for(j=0; j<nbPoint;j++){
+			distances[i][j] = dist(tabCoord[i][0],tabCoord[i][1],tabCoord[j][0],tabCoord[j][1]);
+		}
+	}
+
+	//afficher la matrice
+    for (i = 0; i < nbPoint; i++) //rows
+    {
+        for (j = 0; j < nbPoint; j++) //cols
+        {
+            printf("%d ", distances[i][j]);
+        }
+        printf("\n");
+    }
+
+    res = (int)distances;
+    return res;
 }
 
 int continuer(){
