@@ -91,7 +91,9 @@ int main()
 			
 			read(p3[0],&choixOpe,sizeof(int));
 			read(p4[0],&tailleDonneesLuServer,sizeof(int));// on lit la taille des données
+			printf("La taille des données reçue: %d\n", tailleDonneesLuServer);
 			read(p1[0],&donnees,tailleDonneesLuServer);//on lit ce qui se trouve dans le tube p1 et on le met dans donnees avec une taille de tailleDonneesLuServer
+			printf("Les données reçues sont: %s\n", donnees );
 
 			switch(choixOpe){
 				case 1 : 
@@ -114,11 +116,14 @@ int main()
 					resultat = distance(donnees);
 					printf("Le resultat: %d\n",resultat );	
 				break;
-				case 6: 
+				case 6:
+					printf("Bien dans le cas 6: %s\n",donnees); 
+					printf("Le resultat: %d\n", resultat);
 					resultat = matriceDistance(donnees);
 					printf("La matrice de distance euclidienne est:  %d\n", resultat);
 					//pour le resultat à envoyer au client, un pipe qui contiendra un tableau et la boucle d'affichage se fera dans le serveur
 					//ou on on dit, resultat = adresse du tableau sinon -1 si echec
+				break;
 				default:
 					resultat = 0;
 					printf("Opération non reconnue. Resultat: %d\n",resultat);
@@ -230,27 +235,55 @@ int dist(int x1, int y1, int x2, int y2){
     return (int)distance;
 }
 
-//calul de la matrice de distance euclidienne -> retourne l'adresse du tableau (de la matrice)
+//calul de la matrice de distance euclidienne -> retourne la somme des distances des points
 int matriceDistance(char * donnees){
+	printf("TEST pour voir si on est bien dans la fonction eucli\n");
 	int res = 0;
-
+	int sum = 0;
 	int i=0,j=0,cptPoints=0,x1,x2,y1,y2,nbPoint;
-	//parsage des données 
-	char *strToken = strtok(donnees,separators);
-	while(strToken!= NULL){
+
+	//copier la chaine de caractère car strtok modifie directement
+	char donneesCopy[100] = {0};
+	strcpy(donneesCopy,donnees);
+	char * ptrDonneeCpy = donneesCopy;
+
+	//création des tokens
+	char * strToken;
+	char * token;
+
+	printf("#1 Donnees copiees: %s\n", ptrDonneeCpy);
+	printf("#1 Donnees: %s\n", donnees);
+	//pour compter le nombre de coordonnées
+	while((strToken = strtok_r(donnees,separators,&donnees))){
 		cptPoints++;
+		printf("Contenu de strToken: %d\n", atoi(strToken));	
 	}
-	//déterlination du nb de points donné
+
+	//si le nombre de coordonnées est impaire alors on retourne -1
+	if(cptPoints % 2 != 0){
+		return -1;
+	}
+
+	printf("Nombre d'entiers: %d\n",cptPoints );
+	//détermination du nb de points donné
 	nbPoint = cptPoints/2;
+	printf("Nombre de points: %d\n",nbPoint );
+	//remplissage des tableaux pour calculer la matrice de distance
 	int tabCoord[nbPoint][coord];
 	int distances[nbPoint][nbPoint];
 
 	//remplissage du tableau de coordonnées
-	//si jamais ça ne marche pas on peut créer un autre pointeur strtok
-	while(strToken!=NULL){
+	//si jamais ça ne marche pas on peut créer un autre strtok
+	printf("#2 Donnees copiees: %s\n", ptrDonneeCpy);
+	printf("#2 Donnees: %s\n", donnees);
+	while((token = strtok_r(ptrDonneeCpy,separators,&ptrDonneeCpy))){
+		printf("On est dans la boucle de remplissage de tabCoord\n" );
+		printf("Tokens %d\n",atoi(token));
 		for(i=0;i<nbPoint;i++){//ligne
-			for(j=0;j<coord;j++){
-				tabCoord[i][j] = atoi(strToken);
+			printf("ligne: %d\n",i );
+			for(j=0;j<coord;j++){//colonne
+				printf("colonne: %d\n",j );
+				tabCoord[i][j] = atoi(token);
 			}
 		}
 	}
@@ -259,10 +292,15 @@ int matriceDistance(char * donnees){
 	for(i=0;i<nbPoint;i++){
 		for(j=0; j<nbPoint;j++){
 			distances[i][j] = dist(tabCoord[i][0],tabCoord[i][1],tabCoord[j][0],tabCoord[j][1]);
+			sum += distances[i][j];
 		}
 	}
 
+	//la somme des distances est stockée dans res pour pouvoir la retourner
+	res = sum;
+
 	//afficher la matrice
+	printf("Distance\n");
     for (i = 0; i < nbPoint; i++) //rows
     {
         for (j = 0; j < nbPoint; j++) //cols
@@ -272,7 +310,6 @@ int matriceDistance(char * donnees){
         printf("\n");
     }
 
-    res = (int)distances;
     return res;
 }
 
