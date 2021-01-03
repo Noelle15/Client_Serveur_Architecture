@@ -272,6 +272,7 @@ int matriceDistance(char * donnees){
 	int tabCoord[nbPoint][coord];
 	int distances[nbPoint][nbPoint];
 
+	//TODO: RECUPERER DONNEES COPIES
 	//remplissage du tableau de coordonnées
 	//si jamais ça ne marche pas on peut créer un autre strtok
 	printf("#2 Donnees copiees: %s\n", ptrDonneeCpy);
