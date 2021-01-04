@@ -240,7 +240,7 @@ int matriceDistance(char * donnees){
 	printf("TEST pour voir si on est bien dans la fonction eucli\n");
 	int res = 0;
 	int sum = 0;
-	int i=0,j=0,cptPoints=0,x1,x2,y1,y2,nbPoint;
+	int i=0,j=0,k=0,cptPoints=0,x1,x2,y1,y2,nbPoint;
 
 	//copier la chaine de caractère car strtok modifie directement
 	char donneesCopy[100] = {0};
@@ -271,23 +271,30 @@ int matriceDistance(char * donnees){
 	//remplissage des tableaux pour calculer la matrice de distance
 	int tabCoord[nbPoint][coord];
 	int distances[nbPoint][nbPoint];
+	//tableau qui va stocker les donnees
+	int tabDonnees[nbPoint*2];
+	int cptDonnees = 0;
 
 	//TODO: RECUPERER DONNEES COPIES
-	//remplissage du tableau de coordonnées
-	//si jamais ça ne marche pas on peut créer un autre strtok
 	printf("#2 Donnees copiees: %s\n", ptrDonneeCpy);
 	printf("#2 Donnees: %s\n", donnees);
+
+	//remplissage du tableau des donnees
 	while((token = strtok_r(ptrDonneeCpy,separators,&ptrDonneeCpy))){
-		printf("On est dans la boucle de remplissage de tabCoord\n" );
-		printf("Tokens %d\n",atoi(token));
+		printf("On est dans la boucle de remplissage de tabDonnees\n" );
+		tabDonnees[cptDonnees] = atoi(token);
+		cptDonnees++;
+	}
+
+	//remplissage du tableau de coordonnées
 		for(i=0;i<nbPoint;i++){//ligne
-			printf("ligne: %d\n",i );
 			for(j=0;j<coord;j++){//colonne
-				printf("colonne: %d\n",j );
-				tabCoord[i][j] = atoi(token);
+				for(k=0;k<nbPoint*2;k++){
+					tabCoord[i][j] = tabDonnees[k];
+				}
+				printf("%d\t",tabCoord[i][j]);
 			}
 		}
-	}
 
 	//calcul des distances
 	for(i=0;i<nbPoint;i++){
