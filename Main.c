@@ -354,61 +354,42 @@ void infoClientRAM(int pidServeur){
 
 //renvoie les informations du temps d'exécution
 void infoClientTemps(int pidServeur){
-	//int[] info = {0,1};
-	char chemin [50] = "/proc/";
-	char pidChar[50];
-	char tempsExec[50] = "/stat";
-	
-	sprintf(pidChar, "%d", pidServeur);
-	printf("--------------- %s",pidChar);
-	
-	//chemin du fichier statm
-	strcat(chemin,pidChar);
-	strcat(chemin,tempsExec);
-	printf("\n%s",chemin);
-	
-	char fic;
-	char infoTps[50] = {0};
-	int cptEspace = 0;
-	int cpt = 0;
-	int cptTab = 0;
-	int num;
-    FILE *fp = fopen(chemin, "r");
 
-    if (fp == NULL) {
-        fprintf(stderr, "Non ouverture du fichier\n");
-    } else {
-		
-        while ((fic = fgetc(fp)) != EOF && cptEspace < 17) {
-			if(fic == ' '){
-				cptEspace++;
-			}
-			if(cptEspace >= 13) {
-				infoTps[cpt] = fic;
-				while (fscanf(fp, " %d", &num) == 1) {
-					printf("(----------------------------------------%d\n", num);
-				}
-			}
-        }
-		printf("\ninfoTps = %s\n",infoTps);
-        fclose(fp);
+	int
+	
+	FILE* f;
+    char path[255];
+    sprintf(path, "/proc/%d/stat", pidServeur);
+    f = fopen(path, "r");
+
+    if(f== NULL) printf("lol");
+
+    long int values[4];
+    int cpt = 0;
+    char* t;
+    char line[20000];
+    fgets(line, 20000, f);
+    if(line != NULL) {
+        printf("%s", line);
     }
-	
-	char delim[1] = " ";
-	int tabTemps [4] = {0};
-	char * strToken = strtok(infoTps,delim);
-	
-	while((strToken != NULL)){
-		tabTemps[cptTab] = atoi(strToken);
-		cptTab++;
-	}
-	int i;
-	printf("%ld",sizeof(tabTemps)/sizeof(int));
-	for(i=0; i<sizeof(tabTemps)/sizeof(int); i++){
-	printf("\nCONTENU TAB FINAL %d\n",tabTemps[i]);
-	}
-	
-	
+    
+    char * pch;
+    pch = strtok (line," ");
+    int c = 0;
+    int i = 0;
+    while ((pch = strtok (NULL, " ")) != NULL)
+    {
+        if(c < 12) {
+            c++;
+            continue;
+        }
+        values[i++] = strtol(pch, NULL, 10);
+        if(c > 15) break;
+    }
+
+    for(int i = 0; i < 4; ++i)printf(" :: %ld\n", values[i]);
+
+   	fclose(f);
 }
 
 int continuer(){
