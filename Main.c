@@ -16,6 +16,8 @@ int distance(char * donnees);
 int dist(int x1, int y1, int x2, int y2);
 int matriceDistance(char * donnees);
 int continuer();
+void infoClientRAM(int pidServeur);
+void infoClientTemps(int pidServeur);
 
 //Le séparateur des données reçues est ';'
 const char separators [1] = ";";
@@ -42,6 +44,7 @@ int main()
 	int resultat;
 	int produit;
 	int choixOpe;
+	int reponseClient = 0;
 	
 	do{
 		
@@ -126,13 +129,24 @@ int main()
 					printf("Opération non reconnue. Resultat: %d\n",resultat);
 				break;
 			}
-
+			
 			write(p2[1],&resultat,sizeof(int));
 			close(p2[1]);//fermer l'écriture
+			
+			//affichage des informations si le client arrête le programme
+			reponseClient = continuer();
+			if(reponseClient != 0) {
+				pid_t pid = getpid();
+				int pidServeur = (int)pid;
+				printf("pid serveur %d",pidServeur);
+				infoClientRAM(pidServeur);
+				infoClientTemps(pidServeur);
+				//transmettre à pipe
+			}
 			wait(0);
 		}
-	}while(continuer() == 0);
-
+	}while(reponseClient == 0); //0 = continuer et autre = sortir
+	
 	return 0;
 }
 
@@ -301,6 +315,100 @@ int matriceDistance(char * donnees){
 
     //si tout va bien le resultat est 0 sinon c'est -1
     return res;
+}
+
+//renvoie les informations de la capacité RAM
+void infoClientRAM(int pidServeur){
+	//int[] info = {0,1};
+	char chemin [50] = "/proc/";
+	char pidChar[50];
+	char fichierRAM[50] = "/statm";
+	
+	sprintf(pidChar, "%d", pidServeur);
+	printf("--------------- %s",pidChar);
+	
+	//chemin du fichier statm
+	strcat(chemin,pidChar);
+	strcat(chemin,fichierRAM);
+	printf("\n%s",chemin);
+	
+	char fic;
+	char infoRAM[10] = {0};
+	int cpt = 0;
+    FILE *fp = fopen(chemin, "r");
+
+    if (fp == NULL) {
+        fprintf(stderr, "Non ouverture du fichier\n");
+    } else {
+		
+        while ((fic = fgetc(fp)) != ' ') {
+            infoRAM[cpt] = fic;
+			cpt++;
+        }
+		printf("\ninfoRAM = %s",infoRAM);
+        fclose(fp);
+    }
+	
+	
+}
+
+//renvoie les informations du temps d'exécution
+void infoClientTemps(int pidServeur){
+	//int[] info = {0,1};
+	char chemin [50] = "/proc/";
+	char pidChar[50];
+	char tempsExec[50] = "/stat";
+	
+	sprintf(pidChar, "%d", pidServeur);
+	printf("--------------- %s",pidChar);
+	
+	//chemin du fichier statm
+	strcat(chemin,pidChar);
+	strcat(chemin,tempsExec);
+	printf("\n%s",chemin);
+	
+	char fic;
+	char infoTps[50] = {0};
+	int cptEspace = 0;
+	int cpt = 0;
+	int cptTab = 0;
+	int num;
+    FILE *fp = fopen(chemin, "r");
+
+    if (fp == NULL) {
+        fprintf(stderr, "Non ouverture du fichier\n");
+    } else {
+		
+        while ((fic = fgetc(fp)) != EOF && cptEspace < 17) {
+			if(fic == ' '){
+				cptEspace++;
+			}
+			if(cptEspace >= 13) {
+				infoTps[cpt] = fic;
+				while (fscanf(fp, " %d", &num) == 1) {
+					printf("(----------------------------------------%d\n", num);
+				}
+			}
+        }
+		printf("\ninfoTps = %s\n",infoTps);
+        fclose(fp);
+    }
+	
+	char delim[1] = " ";
+	int tabTemps [4] = {0};
+	char * strToken = strtok(infoTps,delim);
+	
+	while((strToken != NULL)){
+		tabTemps[cptTab] = atoi(strToken);
+		cptTab++;
+	}
+	int i;
+	printf("%ld",sizeof(tabTemps)/sizeof(int));
+	for(i=0; i<sizeof(tabTemps)/sizeof(int); i++){
+	printf("\nCONTENU TAB FINAL %d\n",tabTemps[i]);
+	}
+	
+	
 }
 
 int continuer(){
