@@ -153,15 +153,15 @@ Veuillez choisir votre opération suivi des donnees;
 
 Pour les données il est  **impératif** de terminer par un entier et non une espace ni un autre 
 
-1;2;3;4;5
+> ✅ 1;2;3;4;5
 
-1;2;3;4;
+> ❗️ 1;2;3;4;
 
 Pour les données à passer pour l'opération 6 ou le calcul de la matrice de distance euclidienne il est nécessaire de comprendre que ça va prendre plusieurs points en paramètre, un point est représenté par 2 entiers (x;y) ainsi il faut que le nombre de données rentré soit cohérent, c'est à dire un nombre pair d'entier sans compter le premier entier qui représente l'opération. 
 
-6;1;2;3;4;5;6;7;8;9;10
+> ✅ 6;1;2;3;4;5;6;7;8;9;10
 
-6;1;2;3;4;5;6;7;8;9
+> ❗️ 6;1;2;3;4;5;6;7;8;9
 
 Pour l'opération de l'exponentiation, le premier entier représente l'opération, le deuxième la base, le troisième l'exposant et si il y en a d'autres ils seront considérés comme exposant du résultat précédent.
 
