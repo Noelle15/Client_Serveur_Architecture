@@ -6,8 +6,9 @@
 #include <math.h>
 #include <ctype.h>
 #include <string.h>
+#include <time.h>
 
-//Prototypes
+//prototypes
 int addition(char * donnees);
 int soustraction(char * donnees);
 int multiplication(char * donnees);
@@ -19,38 +20,39 @@ int continuer();
 int infoClientRAM(int pidServeur);
 float infoClientTemps(int pidServeur);
 
-//Le séparateur des données reçues est ';'
+//séparateur des données reçues est ';'
 const char separators [1] = ";";
-//représente le nombre de coordonnées pour un point
+//nombre de coordonnées pour un point
 const int coord = 2;
 
 int main()
 {
-	
-	printf("another loop");
 	//creation des pipes
-	int p1[2];//Pipe client -> serveur
-	int p2[2];//Pipe client <- serveur
-	int p3[2];//Pipe qui envoie le choix de l'opération au serveur
-	int p4[4];//pipe pour envoyer la taille des donnees client(fils) au serveur(pere)	
-	int p5[2];//Pipe qui envoie les données du temps d'exec du serveur(pere) vers le client(fils)
-	int p6[2];//Pipe qui envoie les données de la RAM du serveur(pere) vers le client(fils)
+	int p1[2];//pipe client -> serveur
+	int p2[2];//pipe client <- serveur
+	int p3[2];//pipe qui envoie le choix de l'opération au serveur
+	int p4[4];//pipe pour envoyer la taille des donnees client(fils) au serveur (pere)	
+	int p5[2];//pipe qui envoie les données du temps d'exec du serveur(pere) vers le client(fils)
+	int p6[2];//pipe qui envoie les données de la RAM du serveur(pere) vers le client(fils)
 
 	//variable d'identification processus
 	pid_t pcs;
 
 	//variables pour les fonctions de calculs
-	char donnees[100]; //Taille de la chaîne entrée par l'utilisateur (nombre de caractère total avec les ;)
-	int tailleDonnees; //strlen(donnees)
+	char donnees[100]; //données entrées par l'utilisateur 
+	int tailleDonnees; //strlen(donnees) : nombre de caractère total avec les ;
 	int tailleDonneesLuServer;
 	int resultat;
-	int produit;
 	int choixOpe;
 	int reponseClient = 0;
 	float tempsEnSeconde = -1.0;
 	int RAM = -1;
 
+	//ouverture du fichier de résultat en écriture grâce à "w"
+	FILE *fichierResultat;
+	fichierResultat = fopen("res.txt" , "w" );
 	
+	//boucle pour faire plusieurs calculs à la suite
 	do{
 		pipe(p1);
 		pipe(p2);
@@ -58,196 +60,238 @@ int main()
 		pipe(p4);
 		pipe(p5);
 		pipe(p6);
-
 		
 		//creation du processus client
 		pcs = fork();
 		
 		if (pcs == 0){ //client
-				do{
-					//GERER LE CAS oU oN TAPE UN MAUVAIS CHOIX COMME 1;
-					printf("Veuillez choisir votre opération suivi des donnees;\n");
-					printf("[addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5 : matriceDistance -> 6]\n");
-					scanf("%d",&choixOpe); //5;4;4;6;9
-				}while(choixOpe > 6 || choixOpe < 1);
-				
+				//ajout de la date dans le fichier de résultat
+				if (fichierResultat != NULL) 
+				{
+					time_t now;
+					time(&now); //renvoie l'heure actuelle
+					//ecriture dans le fichier
+					fprintf(fichierResultat,"\n%s",ctime(&now));
+				}
+				//demande du choix de l'operation et des données
+				printf("Veuillez choisir votre opération suivi des donnees;\n");
+				printf("[addition -> 1 : soustraction -> 2 : multiplication -> 3 : puissance -> 4 : distance -> 5 : matriceDistance -> 6]\n");
+				scanf(" %d",&choixOpe);
 				scanf(" %s",donnees); 
-				
-				printf("Les données entrées: %s\n",donnees);
 				tailleDonnees = strlen(donnees);
-				printf("La taille des données entrées: %d\n",tailleDonnees);
+				
+				//ajout des données dans le fichier
+				char donneesClient[100] = "Les données reçues par le client sont : ";
+				strcat(donneesClient, donnees);
+				if (fichierResultat != NULL) {
+					fprintf(fichierResultat,"%s\n",donneesClient);
+				}
 				
 				//le client est le pcs qui écrit dans le tube
-				close(p4[0]);//fermer la lecture du pipe sur la taille des données
-				close(p1[0]); // vérouille la lecture du père
-				close(p2[1]); //fermer l'ecriture sur le pipe du père
-				close(p3[0]);//fermer la lecture du pipe sur le choix de l'operation 
-				close(p5[1]);//fermer l'ecriture sur le pipe du client(Temps d'exec)
-				close(p6[1]);//fermer l'ecriture sur le pipe du client(RAM)
+				close(p4[0]);//ferme la lecture du pipe sur la taille des données
+				close(p1[0]);//vérouille la lecture du père
+				close(p2[1]);//ferme l'ecriture sur le pipe du père
+				close(p3[0]);//ferme la lecture du pipe sur le choix de l'operation 
+				close(p5[1]);//ferme l'ecriture sur le pipe du client(Temps d'exec)
+				close(p6[1]);//ferme l'ecriture sur le pipe du client(RAM)
 				
-				write(p3[1],&choixOpe,sizeof(int));
-				write(p4[1],&tailleDonnees,sizeof(int));//envoyer la taille des donnees au serveur
-				write(p1[1],donnees,tailleDonnees);//envoyer les donnees brutes au serveur
+				write(p3[1],&choixOpe,sizeof(int));//envoie le choix de l'opération au serveur
+				write(p4[1],&tailleDonnees,sizeof(int));//envoie la taille des donnees au serveur
+				write(p1[1],donnees,tailleDonnees);//envoie les donnees brutes au serveur
 				
-				//lire le resultat des calculs
+				//lecture du resultat des calculs
 				read(p2[0],&resultat,sizeof(int));
-				printf("Le resultat réçu par le client: %d\n",resultat);
+				
+				//ajout du résultat dans le fichier resultat
+				char resClient[100] = "Le résultat reçu par le client est : ";
+				char resChar [10] = {0};
+				sprintf(resChar, "%d", resultat);
+				strcat(resClient, resChar);
+				if (fichierResultat != NULL){
+					fprintf(fichierResultat,"Opération n°%d\n",choixOpe);
+					fprintf(fichierResultat,"%s\n",resClient);
+				}
 
-				//lire les stats
+				//lecture des stats - temps d'execution
 				read(p5[0],&tempsEnSeconde,sizeof(float));
-				if(tempsEnSeconde != -1) printf("Le temps d'execution total: %2.f\n s",tempsEnSeconde);
-
+				
+				if(tempsEnSeconde != -1){
+					char tempsExecChar[100] = "FIN DES CALCULS\nLe temps d'execution total : ";
+					char TpsVal [50];
+					sprintf(TpsVal, "%.2f", tempsEnSeconde);
+					strcat(tempsExecChar, TpsVal);
+					strcat(tempsExecChar, " s");
+					printf("\n%s\n",tempsExecChar);
+					
+					if (fichierResultat != NULL) {
+						fprintf(fichierResultat,"\n%s\n",tempsExecChar);
+					}
+				}
+				
+				//lecture des stats - taille des ressources (RAM)
 				read(p6[0],&RAM,sizeof(int));
-				if(RAM != -1) printf("La taille des ressources utilisées: %d ko \n",RAM );
-
+				
+				if(RAM != -1) {
+					char RAMChar[100] = "La taille des ressources utilisées : ";
+					char RAMVal [50];
+					sprintf(RAMVal, "%d", RAM);
+					strcat(RAMChar, RAMVal);
+					strcat(RAMChar, " ko");
+					printf("%s\n",RAMChar);
+					
+					if (fichierResultat != NULL) {
+						fprintf(fichierResultat,"%s\n",RAMChar);
+					}
+				}
+				
 				exit(0);
 		}
 
-		else{
-			//le serveur lit le tube et répond 
-			close(p4[1]);//fermer l'ecriture dans le pipe de la taille des donnees
-			close(p1[1]);//femer l'écriture du client
-			close(p2[0]);//fermer la lecture du client
-			close(p3[1]);//fermer l'ecriture dans le pipe du choix de l'operation
-			close(p5[0]);//fermer la lecture sur le pipe du serveur(Temps d'exec)
-			close(p6[0]);//fermer la lecture sur le pipe du serveur(RAM)			
+		else{//serveur
+			//le serveur lit le tube et envoie une réponse au client 
+			close(p4[1]);//ferme l'ecriture dans le pipe de la taille des donnees
+			close(p1[1]);//feme l'écriture du client
+			close(p2[0]);//ferme la lecture du client
+			close(p3[1]);//ferme l'ecriture dans le pipe du choix de l'operation
+			close(p5[0]);//ferme la lecture sur le pipe du serveur(Temps d'exec)
+			close(p6[0]);//ferme la lecture sur le pipe du serveur(RAM)			
 
-			read(p3[0],&choixOpe,sizeof(int));
-			read(p4[0],&tailleDonneesLuServer,sizeof(int));// on lit la taille des données
-			printf("La taille des données reçue: %d\n", tailleDonneesLuServer);
-			read(p1[0],&donnees,tailleDonneesLuServer);//on lit ce qui se trouve dans le tube p1 et on le met dans donnees avec une taille de tailleDonneesLuServer
-			printf("Les données reçues sont: %s\n", donnees );
+			read(p3[0],&choixOpe,sizeof(int));//lit le choix de l'opération au serveur
+			read(p4[0],&tailleDonneesLuServer,sizeof(int));//lit la taille des données
+			read(p1[0],&donnees,tailleDonneesLuServer);//lit les donnees avec une taille de tailleDonneesLuServer			
 
 			switch(choixOpe){
 				case 1 : 
 					resultat = addition(donnees);
-					printf("Le resultat: %d\n",resultat );
+					printf("Resultat de l'addition : %d\n", resultat);
 				break;
 				case 2 : 
 					resultat = soustraction(donnees);
-					printf("Le resultat: %d\n",resultat );
+					printf("Resultat de la soustraction : %d\n", resultat);
 				break;
 				case 3 : 
 					resultat = multiplication(donnees);
-					printf("Le resultat: %d\n",resultat );
+					printf("Resultat de la multiplication : %d\n", resultat);
 				break;
 				case 4 : 
 					resultat = puissance(donnees);
-					printf("Le resultat: %d\n",resultat );
+					printf("Resultat du calcul de puissance : %d\n", resultat);
 				break; 
 				case 5 :				
 					resultat = distance(donnees);
-					printf("Le resultat: %d\n",resultat );	
+					printf("Resultat du calcul de distance : %d\n", resultat);
+					//-1 représente une opération échouée
 				break;
 				case 6:
 					resultat = matriceDistance(donnees);
-					printf("Resultat du calcul de matrice de distance:  %d\n", resultat);
-					//on dit, resultat = 0 sinon -1 si echec
+					printf("Resultat du calcul de matrice de distance (O -> OK ; -1 -> Echec) :  %d\n", resultat);
+					//-1 représente une opération échouée
 				break;
 				default:
-					resultat = 0;
-					printf("Opération non reconnue. Resultat: %d\n",resultat);
+					resultat = -1; //-1 représente une opération échouée
+					printf("Resultat (échec) : %d\n",resultat);
 				break;
 			}
 			
+			//envoi du resultat au client
 			write(p2[1],&resultat,sizeof(int));
-			close(p2[1]);//fermer l'écriture
+			close(p2[1]);//fermer l'écriture du tube
 			
-			//affichage des informations si le client arrête le programme
+			//envoi des stats si le client arrête le programme
 			reponseClient = continuer();
 			if(reponseClient != 0) {
-
 				pid_t pid = getpid();
 				int pidServeur = (int)pid;
-				printf("pid serveur %d",pidServeur);
 				RAM = infoClientRAM(pidServeur);
 				tempsEnSeconde = infoClientTemps(pidServeur);
 			}
 
-				//transmettre aux pipe
-				write(p5[1],&tempsEnSeconde,sizeof(float));
-				close(p5[1]);
+			//transmission des informations aux pipes
+			write(p5[1],&tempsEnSeconde,sizeof(float));
+			close(p5[1]);
 
-				write(p6[1],&RAM,sizeof(int));
-				close(p6[1]);
+			write(p6[1],&RAM,sizeof(int));
+			close(p6[1]);
 
 			wait(0);
 		}
 	}while(reponseClient == 0); //0 = continuer et autre = sortir
 	
+	//fermeture du fichier
+	fclose(fichierResultat);
+	
 	return 0;
 }
 
+//calcul d'addition
 int addition(char * donnees){
 	int res = 0;
 	//initialisation du parser
 	char * strToken = strtok (donnees,separators);
 	while ( strToken != NULL ) {
         res += atoi(strToken); //conversion en int
-        // On demande le token suivant.
+        //demande du token suivant.
         strToken = strtok ( NULL, separators );
     }
-    printf("ADDITION: %d\n", res );
 	return res;
 }
 
+//calcul de soustraction
 int soustraction(char * donnees){
 	int res;
 	//initialisation du parser
 	char * strToken = strtok (donnees,separators);
-	//Initialisation de res avec la première valeur
+	//initialisation de res avec la première valeur
 	res = atoi(strToken);
-    // On demande le token suivant.
+    //demande du token suivant.
     strToken = strtok ( NULL, separators );
-	//Réalisation de l'opération
+	//réalisation de l'opération
 	while ( strToken != NULL ) {
         res -= atoi(strToken);
         strToken = strtok ( NULL, separators );
     }
-    printf("SOUSTRACTION: %d\n", res );
 	return res;
 }
 
+//calcul de multiplication
 int multiplication(char * donnees){
 	int res = 1;
 	char * strToken = strtok (donnees,separators);
 	while ( strToken != NULL ) {
         res *= atoi(strToken);
-        // On demande le token suivant.
+        //demande du token suivant.
         strToken = strtok ( NULL, separators );
     }
-    printf("MULTIPLICATION: %d\n", res );
 	return res;
 }
 
+//calcul de puissance
 int puissance(char * donnees){
 	int res;	
 	char * strToken = strtok (donnees,separators);
 	res = atoi(strToken);
-	// On demande le token suivant.
+	//demande du token suivant.
 	strToken = strtok ( NULL, separators );
 	while ( strToken != NULL ) {
         res = pow(res,atoi(strToken));
-        // On demande le token suivant.
+        //demande du token suivant.
         strToken = strtok ( NULL, separators );
     }
-    printf("PUISSANCE: %d\n", res );
 	return res;
 }
 
+//calcul de distance
+//Les quatre premiers nombres sont pris en compte, les autres sont ignorés
 int distance(char * donnees){
 	int res = 0;
 	int cpt = 0;
 	int xA, yA, xB, yB;	
 	int tab[4];
 	char * strToken = strtok (donnees,separators);
-	for(int c = 0; c<4; c++){
-		printf(" Le tableau avant la boucle: %d\n", tab[c]);
-	}
+	
 	while(cpt<4 && strToken!=NULL){
 		cpt++;
 		tab[cpt] = atoi(strToken);
-		printf("Le contenu de tab: ----> %d\n",tab[cpt] );
 		strToken = strtok ( NULL, separators );
 	}
 	if(cpt==4){
@@ -257,16 +301,15 @@ int distance(char * donnees){
 		yB = tab[3];
 
 		res = sqrt(pow((xA-xB),2)+pow((yA-yB),2));
-		printf("DISTANCE: %d\n", res);
 	}
 	else{
-		printf("Le nombre de points fourni est inferieur à 4: Resultat:  %d\n", res);
+		res = -1; // -1 représente une opération échouée
+		printf("Le nombre de points fournis est inferieur à 4\n");
 	}
-
 	return res;
 }
 
-//utilisé pour clalculer la matrice de distance euclidienne
+//sous-fonction utilisée pour la matrice de distance euclidienne
 int dist(int x1, int y1, int x2, int y2){
 	double distance = pow(x2 - x1, 2) + pow(y2 - y1, 2);
     distance = sqrt(distance);
@@ -274,13 +317,14 @@ int dist(int x1, int y1, int x2, int y2){
     return (int)distance;
 }
 
-//calul de la matrice de distance euclidienne -> retourne la somme des distances des points
+//calcul de la matrice de distance euclidienne
+//retourne la somme des distances des points
 int matriceDistance(char * donnees){
 	int res = 0;
 	int sum = 0;
 	int i=0,j=0,k=0,cptPoints=0,x1,x2,y1,y2,nbPoint;
 
-	//copier la chaine de caractère car strtok modifie directement
+	//copie de la chaine pour faire strtok sans modifier de la chaîne de départ
 	char donneesCopy[100] = {0};
 	strcpy(donneesCopy,donnees);
 	char * ptrDonneeCpy = donneesCopy;
@@ -289,7 +333,7 @@ int matriceDistance(char * donnees){
 	char * strToken;
 	char * token;
 
-	//pour compter le nombre de coordonnées
+	//comptage du nombre de coordonnées
 	while((strToken = strtok_r(donnees,separators,&donnees))){
 		cptPoints++;
 	}
@@ -301,13 +345,12 @@ int matriceDistance(char * donnees){
 		return res;
 	}
 
-	//détermination du nb de points donné
+	//détermination du nombre de points donnés (un point a deux coordonnées x et y)
 	nbPoint = cptPoints/2;
 	//remplissage des tableaux pour calculer la matrice de distance
 	int tabCoord[nbPoint][coord];
 	int distances[nbPoint][nbPoint];
-	//tableau qui va stocker les donnees
-	int tabDonnees[nbPoint*2];
+	int tabDonnees[nbPoint*2];	//tableau qui stockant les donnees
 	int cptDonnees = 0;
 
 	//remplissage du tableau des donnees
@@ -331,68 +374,60 @@ int matriceDistance(char * donnees){
 		}
 	}
 
-	//afficher la matrice
-    for (i = 0; i < nbPoint; i++) //rows
+	//affichage de la matrice
+    for (i = 0; i < nbPoint; i++) //rows (lignes)
     {
-        for (j = 0; j < nbPoint; j++) //cols
+        for (j = 0; j < nbPoint; j++) //cols (colonnes)
         {
             printf("%d ", distances[i][j]);
         }
         printf("\n");
     }
 
-    //si tout va bien le resultat est 0 sinon c'est -1
+    //le resultat est 0 s'il n'y a pas de problème, sinon il est de -1
     return res;
 }
 
 //renvoie les informations de la capacité RAM
 int infoClientRAM(int pidServeur){
-	//int[] info = {0,1};
 	char chemin [50] = "/proc/";
 	char pidChar[50];
 	char fichierRAM[50] = "/statm";
 	
 	sprintf(pidChar, "%d", pidServeur);
-	printf("--------------- %s",pidChar);
 	
 	//chemin du fichier statm
 	strcat(chemin,pidChar);
 	strcat(chemin,fichierRAM);
-	printf("\n%s",chemin);
 	
 	char fic;
 	char infoRAM[10] = {0};
 	int cpt = 0;
 	int RamEntier;
-    FILE *fp = fopen(chemin, "r");
+    FILE *fp = fopen(chemin, "r"); //ouverture du fichier statm
 
     if (fp == NULL) {
         fprintf(stderr, "Non ouverture du fichier\n");
     } else {
-		
+		//récupération du premier nombre du fichier
         while ((fic = fgetc(fp)) != ' ') {
             infoRAM[cpt] = (fic);
 			cpt++;
         }
-
+		//conversion de la chaîne recuperees en int
         RamEntier = atoi(infoRAM);
-        printf("RAM entier: %d\n",RamEntier);
 
-        fclose(fp);
+        fclose(fp); //fermeture du fichier
     }
-	
 	return RamEntier;
 }
 
 //renvoie les informations du temps d'exécution
 float infoClientTemps(int pidServeur){
-	
 	FILE* f;
     char path[255];
-    sprintf(path, "/proc/%d/stat", pidServeur);
-    f = fopen(path, "r");
-
-    if(f== NULL) printf("lol");
+    sprintf(path, "/proc/%d/stat", pidServeur); //chemin
+    f = fopen(path, "r"); //ouverture du fichier
 
     int values[4];
     int cpt = 0;
@@ -400,17 +435,16 @@ float infoClientTemps(int pidServeur){
     char line[20000];
     fgets(line, 20000, f);
     int somme = 0;
-    if(line != NULL) {
-        printf("%s", line);
-    }
     
     char * temps;
     temps = strtok (line," ");
     int c = 0;
     int i = 0;
+	
+	//récuperation des termes 14, 15, 16 et 17 du fichier stat
     while ((temps = strtok (NULL, " ")) != NULL)
     {
-        if(c < 12) {
+        if(c < 12) { //comptage des espaces pour arriver au bon niveau
             c++;
             continue;
         }
@@ -422,30 +456,28 @@ float infoClientTemps(int pidServeur){
     //calcul du temps total
     for(int i = 0; i < 4; ++i){
     	somme += values[i];
-    	printf(" :: %d\n", values[i]);
-    	printf("La somme:%d\n",somme ); 
     }
 
-    //tick to second
+    //tick to second - conversion du résultat en secondes
     const int tick = 100;
     float seconde;
     seconde = (float)somme/tick;
-    printf("Seconde: %f\n",seconde);
 
-   	fclose(f);
+   	fclose(f); //fermeture du fichier
 
    	return seconde;
 }
 
+//demande au client s'il veut effectuer un autre traitement
 int continuer(){
 	char continuer = '\0';
-	do{
+	do{ //continuer ne doit pas être vide et doit correspondre à O ou N 
 		printf("Voulez-vous continuer ? (O/N)\n");
 		scanf(" %c",&continuer);
-		continuer = (toupper(continuer));
-	} while (continuer != 'O' && continuer !='N'); //continuer ne doit pas être vide
+		continuer = (toupper(continuer)); //min et maj acceptés
+	} while (continuer != 'O' && continuer !='N');
 	
 	if(continuer == 'N')
-		return 1;
-	return 0;
+		return 1; //sortie du programme
+	return 0; //reprise de la boucle depuis le début
 }
