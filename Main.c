@@ -16,8 +16,8 @@ int distance(char * donnees);
 int dist(int x1, int y1, int x2, int y2);
 int matriceDistance(char * donnees);
 int continuer();
-void infoClientRAM(int pidServeur);
-void infoClientTemps(int pidServeur);
+int infoClientRAM(int pidServeur);
+float infoClientTemps(int pidServeur);
 
 //Le séparateur des données reçues est ';'
 const char separators [1] = ";";
@@ -33,6 +33,8 @@ int main()
 	int p2[2];//Pipe client <- serveur
 	int p3[2];//Pipe qui envoie le choix de l'opération au serveur
 	int p4[4];//pipe pour envoyer la taille des donnees client(fils) au serveur(pere)	
+	int p5[2];//Pipe qui envoie les données du temps d'exec du serveur(pere) vers le client(fils)
+	int p6[2];//Pipe qui envoie les données de la RAM du serveur(pere) vers le client(fils)
 
 	//variable d'identification processus
 	pid_t pcs;
@@ -45,13 +47,18 @@ int main()
 	int produit;
 	int choixOpe;
 	int reponseClient = 0;
+	float tempsEnSeconde = -1.0;
+	int RAM = -1;
+
 	
 	do{
-		
 		pipe(p1);
 		pipe(p2);
 		pipe(p3); 
 		pipe(p4);
+		pipe(p5);
+		pipe(p6);
+
 		
 		//creation du processus client
 		pcs = fork();
@@ -72,15 +79,26 @@ int main()
 				
 				//le client est le pcs qui écrit dans le tube
 				close(p4[0]);//fermer la lecture du pipe sur la taille des données
-				close(p1[0]); // vérouille la lecture du père 
+				close(p1[0]); // vérouille la lecture du père
 				close(p2[1]); //fermer l'ecriture sur le pipe du père
 				close(p3[0]);//fermer la lecture du pipe sur le choix de l'operation 
+				close(p5[1]);//fermer l'ecriture sur le pipe du client(Temps d'exec)
+				close(p6[1]);//fermer l'ecriture sur le pipe du client(RAM)
 				
 				write(p3[1],&choixOpe,sizeof(int));
 				write(p4[1],&tailleDonnees,sizeof(int));//envoyer la taille des donnees au serveur
 				write(p1[1],donnees,tailleDonnees);//envoyer les donnees brutes au serveur
 				
+				//lire le resultat des calculs
 				read(p2[0],&resultat,sizeof(int));
+				printf("Le resultat réçu par le client: %d\n",resultat);
+
+				//lire les stats
+				read(p5[0],&tempsEnSeconde,sizeof(float));
+				if(tempsEnSeconde != -1) printf("Le temps d'execution total: %2.f\n s",tempsEnSeconde);
+
+				read(p6[0],&RAM,sizeof(int));
+				if(RAM != -1) printf("La taille des ressources utilisées: %d ko \n",RAM );
 
 				exit(0);
 		}
@@ -90,8 +108,10 @@ int main()
 			close(p4[1]);//fermer l'ecriture dans le pipe de la taille des donnees
 			close(p1[1]);//femer l'écriture du client
 			close(p2[0]);//fermer la lecture du client
-			close(p3[1]);//fermer l'ecriture dans le pipe du choix de l'operation 
-			
+			close(p3[1]);//fermer l'ecriture dans le pipe du choix de l'operation
+			close(p5[0]);//fermer la lecture sur le pipe du serveur(Temps d'exec)
+			close(p6[0]);//fermer la lecture sur le pipe du serveur(RAM)			
+
 			read(p3[0],&choixOpe,sizeof(int));
 			read(p4[0],&tailleDonneesLuServer,sizeof(int));// on lit la taille des données
 			printf("La taille des données reçue: %d\n", tailleDonneesLuServer);
@@ -136,13 +156,21 @@ int main()
 			//affichage des informations si le client arrête le programme
 			reponseClient = continuer();
 			if(reponseClient != 0) {
+
 				pid_t pid = getpid();
 				int pidServeur = (int)pid;
 				printf("pid serveur %d",pidServeur);
-				infoClientRAM(pidServeur);
-				infoClientTemps(pidServeur);
-				//transmettre à pipe
+				RAM = infoClientRAM(pidServeur);
+				tempsEnSeconde = infoClientTemps(pidServeur);
 			}
+
+				//transmettre aux pipe
+				write(p5[1],&tempsEnSeconde,sizeof(float));
+				close(p5[1]);
+
+				write(p6[1],&RAM,sizeof(int));
+				close(p6[1]);
+
 			wait(0);
 		}
 	}while(reponseClient == 0); //0 = continuer et autre = sortir
@@ -318,7 +346,7 @@ int matriceDistance(char * donnees){
 }
 
 //renvoie les informations de la capacité RAM
-void infoClientRAM(int pidServeur){
+int infoClientRAM(int pidServeur){
 	//int[] info = {0,1};
 	char chemin [50] = "/proc/";
 	char pidChar[50];
@@ -335,6 +363,7 @@ void infoClientRAM(int pidServeur){
 	char fic;
 	char infoRAM[10] = {0};
 	int cpt = 0;
+	int RamEntier;
     FILE *fp = fopen(chemin, "r");
 
     if (fp == NULL) {
@@ -342,20 +371,21 @@ void infoClientRAM(int pidServeur){
     } else {
 		
         while ((fic = fgetc(fp)) != ' ') {
-            infoRAM[cpt] = fic;
+            infoRAM[cpt] = (fic);
 			cpt++;
         }
-		printf("\ninfoRAM = %s",infoRAM);
+
+        RamEntier = atoi(infoRAM);
+        printf("RAM entier: %d\n",RamEntier);
+
         fclose(fp);
     }
 	
-	
+	return RamEntier;
 }
 
 //renvoie les informations du temps d'exécution
-void infoClientTemps(int pidServeur){
-
-	int
+float infoClientTemps(int pidServeur){
 	
 	FILE* f;
     char path[255];
@@ -364,32 +394,47 @@ void infoClientTemps(int pidServeur){
 
     if(f== NULL) printf("lol");
 
-    long int values[4];
+    int values[4];
     int cpt = 0;
     char* t;
     char line[20000];
     fgets(line, 20000, f);
+    int somme = 0;
     if(line != NULL) {
         printf("%s", line);
     }
     
-    char * pch;
-    pch = strtok (line," ");
+    char * temps;
+    temps = strtok (line," ");
     int c = 0;
     int i = 0;
-    while ((pch = strtok (NULL, " ")) != NULL)
+    while ((temps = strtok (NULL, " ")) != NULL)
     {
         if(c < 12) {
             c++;
             continue;
         }
-        values[i++] = strtol(pch, NULL, 10);
+        values[i++] = atoi(temps);
         if(c > 15) break;
     }
 
-    for(int i = 0; i < 4; ++i)printf(" :: %ld\n", values[i]);
+
+    //calcul du temps total
+    for(int i = 0; i < 4; ++i){
+    	somme += values[i];
+    	printf(" :: %d\n", values[i]);
+    	printf("La somme:%d\n",somme ); 
+    }
+
+    //tick to second
+    const int tick = 100;
+    float seconde;
+    seconde = (float)somme/tick;
+    printf("Seconde: %f\n",seconde);
 
    	fclose(f);
+
+   	return seconde;
 }
 
 int continuer(){
