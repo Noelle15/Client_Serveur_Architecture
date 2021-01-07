@@ -1,6 +1,6 @@
 ### 1. Membres du groupe:
 
-VERMA Nöelle:  [verma.noelle@gmail.com](mailto:verma.noelle@gmail.com)
+VERMA Noëlle:  [verma.noelle@gmail.com](mailto:verma.noelle@gmail.com)
 
 RABEARISOA VOLOLONIAINA Léïya Océane: [leiya.rabe@gmail.com](mailto:leiya.rabe@gmail.com)
 
@@ -13,13 +13,13 @@ Notre programme est une implémentation d'une calculatrice avec une architecture
 3. Multiplication
 4. Exponentiation (**bonus**)
 5. Calcul de la distance entre les 2 points
-6. Calcul de la matrice de distance entre plusieur points
+6. Calcul de la matrice de distance entre plusieurs points
 
 Les données, avec le choix de l'opération, sont envoyées par le client au serveur.
 
 Le résultat de l'opération choisi est lui renvoyé par le serveur vers le client.
 
-Les logs (les données passées, le choix de l'opération et les resultats) sont égalements stockés dans un fichier text qui se situe dans le même répertoire que le programme. (**bonus)**
+Les logs (la date, les données, le choix de l'opération et les résultats) sont également stockés dans un fichier text qui se situe dans le même répertoire que le programme. (**bonus)**
 
 ### 3. Architecture
 
@@ -33,6 +33,7 @@ Client→ le processus fils
 pid_t pcs;
 pcs = fork();
 if (pcs == 0){ //client envoie les données
+...}
 ```
 
 Serveur → le processus père
@@ -40,6 +41,7 @@ Serveur → le processus père
 ```c
 else{
 			//le serveur lit le tube et répond
+...}
 ```
 
 - Transfert des données entre le client et le serveur
@@ -48,50 +50,52 @@ Les données sont passées entre les processus par le biais des tubes anonymes: 
 
 ```c
 //creation des pipes
-	int p1[2];//Pipe client -> serveur pour les données
-	int p2[2];//Pipe client <- serveur pour le résultat de l'opération
-	int p3[2];//Pipe qui envoie le choix de l'opération au serveur
-	int p4[4];//pipe pour envoyer la taille des donnees client au serveur	
-	int p5[2];//Pipe qui envoie les données du temps d'exec du serveur vers le client
-	int p6[2];//Pipe qui envoie les données de la RAM du serveur vers le client
+	int p1[2];//pipe client -> serveur
+	int p2[2];//pipe client <- serveur
+	int p3[2];//pipe qui envoie le choix de l'opération au serveur
+	int p4[4];//pipe pour envoyer la taille des donnees client(fils) au serveur (pere)	
+	int p5[2];//pipe qui envoie les données du temps d'exec du serveur(pere) vers le client(fils)
+	int p6[2];//pipe qui envoie les données de la RAM du serveur(pere) vers le client(fils)
+
 ```
 
-- Le choix des opération
+- Le choix des opérations
 
 Les opérations sont prédéfinies, ainsi l'utilisateur n'a qu'à écrire l'entier correspondant à l'opération souhaité. L'entier qui représente l'opération est passé avec les données par le client, ensuite le serveur récupère ce dernier et selon l'entier entré il effectuera l'opération correspondante et renverra le resultat.
 
 ```c
 switch(choixOpe){
-				case 1 : 
-					resultat = addition(donnees);
-					printf("Le resultat: %d\n",resultat );
-				break;
-				case 2 : 
-					resultat = soustraction(donnees);
-					printf("Le resultat: %d\n",resultat );
-				break;
-				case 3 : 
-					resultat = multiplication(donnees);
-					printf("Le resultat: %d\n",resultat );
-				break;
-				case 4 : 
-					resultat = puissance(donnees);
-					printf("Le resultat: %d\n",resultat );
-				break; 
-				case 5 :				
-					resultat = distance(donnees);
-					printf("Le resultat: %d\n",resultat );	
-				break;
-				case 6:
-					resultat = matriceDistance(donnees);
-					printf("Resultat du calcul de matrice de distance:  %d\n", resultat);
-					//on dit, resultat = 0 sinon -1 si echec
-				break;
-				default:
-					resultat = 0;
-					printf("Opération non reconnue. Resultat: %d\n",resultat);
-				break;
-			}
+			case 1 : 
+				resultat = addition(donnees);
+				printf("Resultat de l'addition : %d\n", resultat);
+			break;
+			case 2 : 
+				resultat = soustraction(donnees);
+				printf("Resultat de la soustraction : %d\n", resultat);
+			break;
+			case 3 : 
+				resultat = multiplication(donnees);
+				printf("Resultat de la multiplication : %d\n", resultat);
+			break;
+			case 4 : 
+				resultat = puissance(donnees);
+				printf("Resultat du calcul de puissance : %d\n", resultat);
+			break; 
+			case 5 :				
+				resultat = distance(donnees);
+				printf("Resultat du calcul de distance : %d\n", resultat);
+				//-1 représente une opération échouée
+			break;
+			case 6:
+				resultat = matriceDistance(donnees);
+				printf("Resultat du calcul de matrice de distance (O -> OK ; -1 -> Echec) :  %d\n", resultat);
+				//-1 représente une opération échouée
+			break;
+			default:
+				resultat = -1; //-1 représente une opération échouée
+				printf("Resultat (échec) : %d\n",resultat);
+			break;
+		}
 ```
 
 - Parsage des données
@@ -102,7 +106,7 @@ Le premier entier représente l'opération, et le reste les données pour effect
 
 > Exemple: 4;5;2 → 5^2 ou encore 1;2;3;4;5 → 2+3+4+5
 
-Le parsage des données se fait grace à la fonction **strtok** qui va se charger de la récupération des données séparées de délimiteurs. 
+Le parsage des données se fait grâce à la fonction **strtok** qui va se charger de la récupération des données séparées de délimiteurs. 
 
 - Les opérations
 
@@ -117,32 +121,39 @@ int puissance(char * donnees){
 	// On demande le token suivant.
 	strToken = strtok ( NULL, separators );
 	while ( strToken != NULL ) {
-        res = pow(res,atoi(strToken));
-        // On demande le token suivant.
-        strToken = strtok ( NULL, separators );
-    }
-    printf("PUISSANCE: %d\n", res );
+		res = pow(res,atoi(strToken));
+		//demande du token suivant.
+		strToken = strtok ( NULL, separators );
+        }
 	return res;
 }
 ```
 
 - Les logs: données envoyées/reçues, opérations et résultats
 
-Les logs sont stockés dans un fichier au fur et à mesure de l'exécution du programme. Ils prennent en compte les données envoyées par le client et celles reçues par le serveur, ensuite le résultat de l'opération. Le fichier de log comporte également la date et l'heure de l'execution du programme. 
+Les logs sont stockés dans un fichier au fur et à mesure de l'exécution du programme. Ils prennent en compte les données envoyées par le client et celles reçues par le serveur, ensuite le résultat de l'opération. Le fichier de log comporte également la date et l'heure de l'exécution du traitement. 
 
 - Les informations système.
 
-L'usage de la RAM et le temps d'exécution du programme sont récupérés par le serveur et ensuite placés dans deux pipes pour être envoyés au client à la fin du programme. Pour trouver cela il a fallu lire dans le fichier /proc  du processus père (serveur).
+L'usage de la RAM et le temps d'exécution du programme sont récupérés par le serveur et ensuite placés dans deux pipes pour être envoyés au client à la fin du programme. Pour trouver cela il a fallu lire deux fichiers dans le dossier /proc/pid avec le pid du processus père (serveur).
 
-RAM: se trouve dans /statm
+RAM: se trouve dans le fichier /statm et correspond à la taille des ressources utilisées pendant le déroulement du programme. Il s'agit de la première valeur dans le fichier.
 
-Le temps d'exécution: se trouve dans /stat  et il a fallu récupérer les valeurs qui se trouvaient à 14ème jusqu'à la 17ème valeur. L'addition de ces valeurs représente le temps total, en tick. Pour avoir le temps en seconde on divise le tout par 100 qui est le nombre de tick par seconde.
+Le temps d'exécution: se trouve dans le fichier /stat  et il a fallu récupérer les valeurs qui se trouvaient de la 14ème jusqu'à la 17ème position dans le fichier. L'addition de ces valeurs représente le temps total d'exécution, en tick. Pour avoir le temps en seconde, on divise le tout par 100 qui est le nombre de tick par seconde.
 
 ### 4. Utilisation
 
 Pour lancer le programme il est nécessaire de le compiler: l'option -lm sert à utiliser la librairie math
 
+```
 gcc -o main Main.c -lm
+```
+
+Puis pour l'exécuter, il faut lancer la commande suivante :
+
+```
+./main
+```
 
 Ensuite, il faut passer les données:
 
